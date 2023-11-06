@@ -9,6 +9,26 @@ import os
 from utils import glob_audio_files
 from tqdm import tqdm
 
+import sounddevice as sd
+
+def play_audio(audio, sample_rate):
+    # Convert the PyTorch tensor to a NumPy array
+    audio_np = audio.numpy()
+    # If the audio is single-channel (mono), convert it to stereo
+    if audio_np.shape[0] == 1:  # Check if the channel count is 1
+        audio_stereo = np.tile(audio_np, (2, 1)).T  # Convert to stereo by duplicating the mono channel
+    else:
+        audio_stereo = audio_np  # If already stereo, no need to change
+    # If the audio is a 1D array, reshape it to 2D and convert to stereo
+    if audio.ndim == 1:
+        audio = audio.reshape(-1, 1)  # Reshape mono audio to 2D array (samples, 1)
+        audio = np.tile(audio, (1, 2))  # Duplicate the single channel to create a stereo effect
+    # Play the stereo audio using the specified sample rate
+    sd.play(audio_stereo, sample_rate)
+    # Wait until the audio playback is finished
+    sd.wait()
+
+
 
 def load_model(checkpoint_path, config_path):
     with open(config_path) as f:
@@ -148,6 +168,7 @@ def main():
         )
         out_fname = os.path.join(
             args.out_dir, os.path.basename(args.fname))
+        play_audio(out, sr)
         save_audio(out, out_fname, sr)
         print(f"Saved output to {args.out_dir}")
     if rtf is not None and e2e_latency is not None:
